@@ -51,19 +51,24 @@ process cnvtweak {
     input:
     set file(input_cns), file(input_cnr) from cnvs
 
-    script:
-    """
-    echo "[cnvtweak] ${input_cns} ${input_cnr}"
-    """
+    output:
+    file(output_finalcns) 
+    file(output_finalcnr)
 
-    // """
-    // cnvkit.py call --filter cn $T.cns
-    // cnvkit.py gainloss $T.cnr -s $T.call.cns -t 0.3 -m 5 > $T.segment-gainloss.txt
-    // cnvkit.py gainloss $T.cnr -t 0.3 -m 5 > $T.final.cnr
-    // cnvkit.py gainloss $T.cnr -s $T.call.cns -t 0.3 -m 5 | tail -n+2 | cut -f1 | sort > $T.segment-genes.txt
-    // cnvkit.py gainloss $T.cnr -t 0.3 -m 5 | tail -n+2 | cut -f1 | sort > $T.ratio-genes.txt
-    // comm -12 $T.ratio-genes.txt $T.segment-genes.txt > $T.trusted-genes.txt
-    // cat $T.segment-gainloss.txt | head -n +1 > $T.final.cns
-    // for gene in `cat $T.trusted-genes.txt`; do grep -e $gene $T.segment-gainloss.txt; done >> $T.final.cns
-    // """
+    script:
+    inputfile_name = "${input_cns}".replaceFirst(/.cns/, "")
+    output_finalcns = "${input_cns}".replaceFirst(/.cns$/, ".final.cns")
+    output_finalcnr = "${input_cnr}".replaceFirst(/.cnr$/, ".final.cnr")
+    """
+        cnvkit.py call --filter cn "${input_cns}"
+        cnvkit.py gainloss "${input_cnr}" -s ${inputfile_name}.call.cns -t 0.3 -m 5 > ${inputfile_name}.segment-gainloss.txt
+        cnvkit.py gainloss "${input_cnr}" -t 0.3 -m 5 > ${inputfile_name}.final.cnr
+        cnvkit.py gainloss "${input_cnr}" -s ${inputfile_name}.call.cns -t 0.3 -m 5 | tail -n+2 | cut -f1 | sort > ${inputfile_name}.segment-genes.txt
+        cnvkit.py gainloss "${input_cnr}" -t 0.3 -m 5 | tail -n+2 | cut -f1 | sort > ${inputfile_name}.ratio-genes.txt
+        comm -12 ${inputfile_name}.ratio-genes.txt ${inputfile_name}.segment-genes.txt > ${inputfile_name}.trusted-genes.txt
+        cat ${inputfile_name}.segment-gainloss.txt | head -n +1 > ${inputfile_name}.final.cns
+        grep -w -f ${inputfile_name}.trusted-genes.txt ${inputfile_name}.segment-gainloss.txt > ${inputfile_name}.final.cns
+
+    """
 }
+
